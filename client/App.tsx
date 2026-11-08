@@ -7,8 +7,6 @@ type Enrollment = {
 type SseEvent = {
   code: string;
   expiresAt: number;
-  progress: number;
-  secondsRemaining: number;
 };
 
 type LogType = "success" | "failure" | "error";
@@ -16,6 +14,7 @@ type Log = { type: LogType; message: string };
 
 export default function App() {
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
+  const [now, setNow] = useState(Date.now());
   const [loading, setLoading] = useState({
     createEnrollment: true,
     verifyCode: false
@@ -23,6 +22,9 @@ export default function App() {
   const [sseEvent, setSseEvent] = useState<SseEvent | null>(null);
   const [sseConnected, setSseConnected] = useState(false);
   const [log, setLog] = useState<Log | null>(null);
+  const remainingMs = sseEvent ? Math.max(0, sseEvent.expiresAt - now) : 0;
+  const secondsRemaining = Math.round(remainingMs / 1000);
+  const progress = (remainingMs / 30_000) * 100;
 
   const createEnrollment = async () => {
     setLog(null);
@@ -44,6 +46,8 @@ export default function App() {
 
   useEffect(() => {
     void createEnrollment();
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -56,32 +60,12 @@ export default function App() {
       setSseEvent(null);
     };
     const handleEvent = (event: MessageEvent<string>) => {
-      const { code } = JSON.parse(event.data) as { code: string };
-      const expiresAt = Date.now() + 30_000;
-      setSseEvent({
-        code,
-        expiresAt,
-        progress: 100,
-        secondsRemaining: 30
-      });
+      const { code, expiresAt } = JSON.parse(event.data) as SseEvent;
+      setSseEvent({ code, expiresAt });
     };
     eventSource.addEventListener("message", handleEvent);
-
-    const timer = setInterval(() => {
-      setSseEvent((prev) => {
-        if (!prev) return null;
-        const remaining = Math.max(0, prev.expiresAt - Date.now());
-        const progress = (remaining / 30_000) * 100;
-        return {
-          ...prev,
-          progress,
-          secondsRemaining: Math.ceil(remaining / 1000)
-        };
-      });
-    }, 1000);
-
     return () => {
-      clearInterval(timer);
+      eventSource.removeEventListener("message", handleEvent);
       eventSource.close();
       setSseConnected(false);
     };
@@ -211,17 +195,17 @@ export default function App() {
             </div>
             <div className="code-progress-row">
               <span className="code-remaining">
-                {sseEvent && `${sseEvent.secondsRemaining}s`}
+                {sseEvent && `${secondsRemaining}s`}
               </span>
               <div
-                className="code-progress"
+                className={`code-progress ${secondsRemaining <= 5 ? "orange" : "teal"}`}
                 role="progressbar"
                 aria-label="Time remaining for server code"
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-valuenow={Math.round(sseEvent?.progress ?? 0)}
+                aria-valuenow={progress ?? 0}
               >
-                <span style={{ width: `${sseEvent?.progress ?? 0}%` }} />
+                <span style={{ width: `${progress ?? 0}%` }} />
               </div>
             </div>
           </div>

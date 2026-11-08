@@ -244,9 +244,17 @@ footer {
 .code-progress span {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, #1595a9, var(--cyan));
-  box-shadow: 0 0 8px #25c7dc66;
   transition: width .1s linear
+}
+
+.code-progress.teal span {
+  background: linear-gradient(90deg, #1595a9, var(--cyan));
+  box-shadow: 0 0 8px #25c7dc66
+}
+
+.code-progress.orange span {
+  background: linear-gradient(90deg, #d97706, #f59e0b);
+  box-shadow: 0 0 8px #f59e0b66
 }
 
 .verify-form>label {

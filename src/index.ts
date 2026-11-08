@@ -69,9 +69,10 @@ const server = serve({
           async function* () {
             while (true) {
               const code = await generate({ secret: activeSecret });
-              yield `data: ${JSON.stringify({ code })}\n\n`;
               // Wait until the next 30-second TOTP boundary
               const waitDelay = 30_000 - (Date.now() % 30_000);
+              const expiresAt = Date.now() + waitDelay;
+              yield `data: ${JSON.stringify({ code, expiresAt })}\n\n`;
               await Bun.sleep(waitDelay);
             }
           },
